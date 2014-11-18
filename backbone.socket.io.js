@@ -11,12 +11,14 @@ define(['backbone'],
             socket.
         */
         var socketRequest = function (socket, method, data, options) {
+            var self = this;
             data || (data = {});
             options || (options = {});
             options.data || (options.data ={});
             options.timeout || (options.timeout = 10000);
             options.success || (options.success = function () {});
             options.timeoutFail || (options.timeoutFail = function() {
+                // console.log(typeof self);
                 throw "'socketRequest' expected a response ";
             });
 
@@ -45,13 +47,13 @@ define(['backbone'],
                 options || (options = {});
                 if (options.socket) this.socket = options.socket;
                 if (options.controller) this.controller = options.controller;
-                if (options.model_id) this.id = options.model_id;
+                if (options.socket_id) this.id = options.socket_id;
 
                 Backbone.Model.apply(this, arguments);
             },
             //
             request: function (method, options) {
-                socketRequest(this.socket, method, {
+                socketRequest.call(this, this.socket, method, {
                     //ns: this.url(),
                     id: this.id
                     }, options);
@@ -86,13 +88,20 @@ define(['backbone'],
                 var self = this;
 
                 // Join on inintialize. This can probably be moved elsewhere.
-                socketRequest(this.socket, 'watch', {
+                socketRequest.call(this, this.socket, 'watch', {
                     id: this.id
                 },{
                     success: function(data) {
                         self.socket.on("change",
                             function (data) {
-                                // console.log("Watch Change Model", data);
+                                //console.log("Watch Model Change", data);
+                                self.set(data);
+                            }
+                        );
+                        self.socket.on("reset",
+                            function (data) {
+                                //console.log("Watch Model Reset", data);
+                                self.clear();
                                 self.set(data);
                             }
                         );
@@ -106,7 +115,7 @@ define(['backbone'],
             constructor: function (attributes, options) {
                 options || (options = {});
                 if (options.socket) this.socket = options.socket;
-                if (options.model_id) this.id = options.model_id;
+                if (options.socket_id) this.id = options.socket_id;
 
                 Backbone.Collection.apply(this, arguments);
             },
@@ -115,13 +124,20 @@ define(['backbone'],
                 var self = this;
 
                 // Join on inintialize. This can probably be moved elsewhere.
-                socketRequest(this.socket, 'watch', {
+                socketRequest.call(this, this.socket, 'watch', {
                     id: this.id
                 },{
                     success: function(data) {
                         self.socket.on("change",
                             function (data) {
                                 // console.log("Watch Change Collection", data);
+                                self.set(data); // Requires the engine to
+                                                // set an id.
+                            }
+                        );
+                        self.socket.on("reset",
+                            function (data) {
+                                // console.log("Watch Reset Collection", data);
                                 self.reset(data);
                             }
                         );
